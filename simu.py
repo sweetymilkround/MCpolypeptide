@@ -407,7 +407,7 @@ filename2 = filepath2 + now2 + 'gpc.txt'
 
 
 def normfun(x,mu,sigma):
-    pdf = np.exp(-((x-mu)**2)/(2*sigma*2))/(sigma*np.sqrt(2*np.pi))
+    pdf = np.exp(-((x-mu)**2)/(2*sigma**2))/(sigma*np.sqrt(2*np.pi))
     return pdf
 chainweight=[ ]
 
