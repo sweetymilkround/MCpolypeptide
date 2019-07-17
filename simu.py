@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul 15 00:35:22 2019
+
+@author: viviantian
+"""
+
+
 import numpy as np
 from random import choice
 import pdb
@@ -5,6 +14,7 @@ import sys
 import time
 import matplotlib.pyplot as plt
 import os
+import copy
 start = time.time()
 time_arr = []
 sys.setrecursionlimit(10000) #递归深度设置为10000 
@@ -15,7 +25,7 @@ n_k4 = 0 #记录发生k4反应的次数
 n_k6 = 0 #记录发生k6反应的次数
 
 Polymer_list = []  #聚合物列表
-kk = 2
+kk = 1
 # 初始化参数
 T = 0
 n_Polymer_init = int(1000*kk)
@@ -31,9 +41,11 @@ n_phenol = 0 # 苯酚的数目 = 反应掉的NPC数目
 n_side = 0 # 侧基的数目
 n_HA = n_NPC+ n_AcH; # 酸的总量
 n_activechain = int(1000*kk) #活性链的数目初始和引发剂的数目相同
-k1=170
-k4=7000
-k5=1
+kp=10#NPC与HAC的酸性比例
+k1=1.4
+k4=0.4
+k5=0
+k6=0.00001
 
 
 
@@ -72,9 +84,9 @@ import random
 
 def acidification(): #酸化反应，没次反应循环都要发生一次
     global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
-    acidrate= n_NPC / n_HA
-    n_HA = n_NPC + n_AcH; # 酸的总量
-    k = 10
+    acidrate= (kp*n_NPC) / n_HA
+    n_HA = kp*n_NPC + n_AcH; # 酸的总量
+    k = 1.01
     a = k - 1
     b = k*n_HA - k*n_Polymer + 2*n_Polymer
     c = -n_Polymer**2
@@ -113,53 +125,88 @@ def k4_reaction():  #
 链终止(变成死链或者支化)
 '''
 
-def k5_k6_reaction():
+def k5_reaction():
     global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
-    # 选择一个活性链
-    temp1 = choice(Polymer_list) #成为另外一个链的支链(发生k6)或者成为死链(发生k5)
-    while temp1.activate == False: 
-        temp1 = choice(Polymer_list)
-    # 然后根据各个链的侧基数目进行轮盘赌选择与它进行反应的链
-    P = []
-    for i in range(len(Polymer_list)):
-        P.append(Polymer_list[i].n_side/n_side)
-    accu_P = np.cumsum(P) #计算累积概率
+    temp=choice(Polymer_list)
+    while temp.polymerLength == 0:
+        temp=choice(Polymer_list)#随机抽取一条链
+    k = np.random.uniform(0,1)
+    if k<=0.909:
+        branch=get_all_branch(temp)
+        if "temp.n_side" not in branch:
+            temp.branch[temp.n_side]=temp#回咬最末端的侧基形成死链
+    else:
+        
+        P = []
+        branch = get_all_branch(temp)
+        side=temp.n_side-1 #主链剩下侧基数
+        for i in range(len(branch)):
+            side=side+branch[i].n_side #加上侧链的侧基数
+        print(side)
+        if side > 0:
+            for i in range(len(branch)):
+                P.append(branch[i].n_side/side)
+            P.append((temp.n_side-1)/side)
+            
+            temp3 = temp        
+            accu_P = np.cumsum(P) #计算累积概率
+            k = np.random.random()
+            for i in range(len(accu_P)-1):
+               if k <= accu_P[i]:
+               #print(P[i])
+                  temp3 = branch[i]
+                  k=k+1
+               #print(temp3)
+            if temp3!=temp:      
+               k = choice(sideloc(temp3))
+            else:
+               k=choice(sideloc2(temp3))
+            temp3.branch[k] = temp
+            temp3.n_side = temp3.n_side - 1
+        else:
+            temp.branch[temp.n_side]=temp
+    temp.chainstatus = 2  #链变成死链
+    temp.activate = False
+    temp.n_side = temp.n_side - 1
+    n_side = n_side - 1  
+    n_Polymer = n_Polymer-1
     
+    
+def k6_reaction():
+    global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
+    Polymer_list2 = []
+    Polymer_list2 = copy.deepcopy(Polymer_list)
+    temp1 = choice(Polymer_list2)
+    while temp1.activate == False: 
+        temp1 = choice(Polymer_list2)
+    # 然后根据各个链的侧基数目进行轮盘赌选择与它进行反应的链
+    branch = get_all_branch(temp1)
+    Polymer_list2.remove(temp1)
+    for i in branch:
+        Polymer_list2.remove(branch[i])
+    P = []
+    side=0
+    for i in range(len(Polymer_list2)):
+        side=side+Polymer_list2[i].n_side
+    for i in range(len(Polymer_list2)):
+            P.append((Polymer_list2[i].n_side)/side)
+    accu_P = np.cumsum(P) #计算累积概率   
     k = np.random.random()
     for i in range(len(accu_P)):
         if k <= accu_P[i]:
             # print(P[i])
-            temp2 = Polymer_list[i]
-            k = k + 1 # 跳出循环
-    #pdb.set_trace()
-    if temp1 == temp2: #发生k5
-        #下面要判断这个死链连接到那个侧基上
-        k = choice(sideloc(temp1))  #从列表中随机取一个元素作为连接的位置
-        temp1.branch[k] = temp1
-        temp1.chainstatus = 2  #链变成死链
-        temp1.activate = False
-        temp1.n_side = temp1.n_side - 1
-    else: #发生k6
-        # print('支链')
-        k = choice(sideloc(temp2))
-        # 判断是否支化到自己支链(或者是支链的支链，需要遍历一遍)的侧基上，如果是,主链的状态不变，活性则失去
-        flag = True
-        branch = get_all_branch(temp1) # 遍历所有的支链
-        for i in branch:
-            if i == temp2:
-                flag = False
-        if flag: # 没有回咬
-            temp1.chainstatus = 1  # temp1变成支链不能增长
-            temp2.branch[k] = temp1
-            temp2.n_branchnum = temp2.n_branchnum + 1
-            n_Polymer = n_Polymer-1
-        else:
-            temp1.chainstatus = 3  # temp1回咬自己的支链不能增长
-            temp2.branch[k] = False # 用一个布尔变量把这个侧基占位
-        temp2.n_side = temp2.n_side - 1
-    # 侧基-1/可反应的链数目-1。这个变量用于酸化计算activechain的含量
+           temp2 = Polymer_list2[i]
+           k = k + 1 # 跳出循环
+    k = choice(sideloc(temp2)) 
+    temp1.chainstatus = 1  # temp1变成支链不能增长
+    temp2.branch[k] = temp1
+    temp2.n_branchnum = temp2.n_branchnum + 1
+    n_Polymer = n_Polymer-1
+    temp2.n_side = temp2.n_side - 1
     temp1.activate=False
     n_side = n_side - 1
+    
+    
 '''
 获得一个链的所有支链对象（列表）
 '''
@@ -167,7 +214,7 @@ def get_all_branch(Polymer):
     global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
     branch = []
     for i in Polymer.branch:
-        if Polymer.branch[i] == False: #忽略占位的布尔变量
+        if Polymer.branch[i] == Polymer: #忽略占位的布尔变量
             pass
         else:
             branch.append(Polymer.branch[i])
@@ -193,21 +240,25 @@ def sideloc(Polymer):
 def selectreaction():
     global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
     
-    w_k1 = n_activechain * n_NPCremain * k1
+    w_k1 = n_NPCanion * k1
     w_k4 = n_activechain * n_NCA * k4
-    w_k5_k6 = n_activechain * n_side * k5
-    w = w_k1 + w_k4 + w_k5_k6
+    w_k5 = n_activechain * k5
+    w_k6 = n_activechain * n_side * k6
+    w = w_k1 + w_k4 + w_k5+w_k6
     p1 = w_k1 / w
     p4 = w_k4 / w
-    p5 = w_k5_k6 / w
+    p5 = w_k5 / w
+    p6 = w_k6 / w
     k = np.random.random()#在0，1区间内产生随机数
 
     if k <= p1:
-        return 'k1'
+        return 'k1',w
     elif k <= p1 + p4:
-        return 'k4'
+        return 'k4',w
     elif k <= p1 + p4 + p5:
-        return 'k5_k6'
+        return 'k5',w
+    elif k <= p1 + p4 + p5 + p6:
+        return 'k6',w
 def alldead():
     global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
     for i in Polymer_list:
@@ -313,18 +364,21 @@ actualconnversion = [0,0.15854,0.27439,0.35976,0.51829,0.70122,0.82317,0.915]
 
 while conversion<0.9 and alldead():
     acidification() # 酸化反应
-    reaction = selectreaction()
+    reaction,a0 = selectreaction()
     r = np.random.uniform(0, 1)# 在0，1区间内产生随机数
     # print(reaction)
     if reaction == 'k1':
         k1_reaction()
-        T = T + 1/k1*np.log(1/r)
+        T = T + 1/a0*np.log(1/r)
     elif reaction == 'k4':
         k4_reaction()
-        T = T + 1/k4*np.log(1/r)
-    elif reaction == 'k5_k6':
-        k5_k6_reaction()
-        T = T + 1/k5*np.log(1/r)
+        T = T + 1/a0*np.log(1/r)
+    elif reaction == 'k5':
+        k5_reaction()
+        T = T + 1/a0*np.log(1/r)
+    elif reaction == 'k6':
+        k6_reaction()
+        T = T + 1/a0*np.log(1/r)
     #现有分子数/引发剂数目
     n_Polymer_num_ratio = n_Polymer/n_Polymer_init
     # 支化分子数目/现有分子数
@@ -462,7 +516,7 @@ print('All have done!')
 Mn,Mw,pdi,single_sum,n_chain = calc_para()
 print('Mn: %.3f\nMw: %.3f\npdi: %.6f'%(Mn,Mw,pdi))
 print('投入单体数: %d\n参加反应单体数: %d\n引发剂数目: %d'%(n_NPC_init,single_sum,n_Polymer_init))
-print('链数：%d'%n_chain)
+print('链数：%d'%n_Polymer)
 
 et=T/9
 actualtime = [0,et,2*et,3*et,4.5*et,6*et,7.5*et,9*et]
