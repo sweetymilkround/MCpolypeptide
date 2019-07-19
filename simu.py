@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jul 15 00:35:22 2019
-
 @author: viviantian
 """
 
@@ -25,7 +24,7 @@ n_k4 = 0 #记录发生k4反应的次数
 n_k6 = 0 #记录发生k6反应的次数
 
 Polymer_list = []  #聚合物列表
-kk = 1
+kk = 0.5
 # 初始化参数
 T = 0
 n_Polymer_init = int(1000*kk)
@@ -36,21 +35,23 @@ n_AcH = int(10000*kk)
 n_NCA = 0
 n_Ac = 0
 n_NPCremain = 0 #酸化后剩余的NPC
+n_NPCanion=0
 #n_NH3 = 0
 n_phenol = 0 # 苯酚的数目 = 反应掉的NPC数目
 n_side = 0 # 侧基的数目
 n_HA = n_NPC+ n_AcH; # 酸的总量
 n_activechain = int(1000*kk) #活性链的数目初始和引发剂的数目相同
 kp=10#NPC与HAC的酸性比例
-k1=1.4
-c1=k1
-k4=0.4*6.645e10-19
-c4=k4/V
-k5=0*6.645e10-19
-c5=k5
-k6=0.00001*6.645e10-19
-c6=k6/V
-V=6.645e10-19
+V=(40/(6.023*1e23)*n_Polymer_init)
+k1=2.1
+k4=15000
+k5=0
+k6=0.5
+c1=k1#产生单体
+c4=k4/V/(6.023*1e23)#增长
+c5=k5#终止
+c6=k6/V/(6.023*1e23)#支化
+
 
 
 class Polymer():  #聚合物类(实体类)
@@ -82,14 +83,13 @@ class Polymer():  #聚合物类(实体类)
 产生NCA单体，发生k1反应,
 NPC和单体的数目减少，
 随机选择一个聚合物，参加反应，并改变其结构
-
 '''
 import random
 
 def acidification(): #酸化反应，没次反应循环都要发生一次
-    global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
-    acidrate= (kp*n_NPC) / n_HA
-    n_HA = kp*n_NPC + n_AcH; # 酸的总量
+    global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6,n_NPCanion
+    n_HA = kp*n_NPC + n_AcH# 酸的总量
+    acidrate= (kp*n_NPC) / n_HA 
     k = 1.01
     a = k - 1
     b = k*n_HA - k*n_Polymer + 2*n_Polymer
@@ -98,6 +98,7 @@ def acidification(): #酸化反应，没次反应循环都要发生一次
     n_HAremain = n_HA - n_Polymer + n_activechain
     activerate = n_activechain / n_Polymer
     n_NPCremain = n_HAremain * acidrate
+    n_NPCanion=(n_Polymer-n_activechain)*acidrate
 
 
 def k1_reaction():
@@ -242,7 +243,7 @@ def sideloc(Polymer):
 
 # 返回发生反应的函数名
 def selectreaction():
-    global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
+    global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6,n_NPCanion
     
     w_k1 = n_NPCanion * c1
     w_k4 = n_activechain * n_NCA * c4
