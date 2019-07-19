@@ -43,10 +43,14 @@ n_HA = n_NPC+ n_AcH; # 酸的总量
 n_activechain = int(1000*kk) #活性链的数目初始和引发剂的数目相同
 kp=10#NPC与HAC的酸性比例
 k1=1.4
-k4=0.4
-k5=0
-k6=0.00001
-
+c1=k1
+k4=0.4*6.645e10-19
+c4=k4/V
+k5=0*6.645e10-19
+c5=k5
+k6=0.00001*6.645e10-19
+c6=k6/V
+V=6.645e10-19
 
 
 class Polymer():  #聚合物类(实体类)
@@ -240,10 +244,10 @@ def sideloc(Polymer):
 def selectreaction():
     global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
     
-    w_k1 = n_NPCanion * k1
-    w_k4 = n_activechain * n_NCA * k4
-    w_k5 = n_activechain * k5
-    w_k6 = n_activechain * n_side * k6
+    w_k1 = n_NPCanion * c1
+    w_k4 = n_activechain * n_NCA * c4
+    w_k5 = n_activechain * c5
+    w_k6 = n_activechain * n_side * c6
     w = w_k1 + w_k4 + w_k5+w_k6
     p1 = w_k1 / w
     p4 = w_k4 / w
