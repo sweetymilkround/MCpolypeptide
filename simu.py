@@ -24,14 +24,14 @@ n_k4 = 0 #记录发生k4反应的次数
 n_k6 = 0 #记录发生k6反应的次数
 
 Polymer_list = []  #聚合物列表
-kk = 0.5
+kk = 1
 # 初始化参数
 T = 0
 n_Polymer_init = int(1000*kk)
 n_NPC_init = int(20000*kk)
 n_Polymer = n_Polymer_init
 n_NPC = n_NPC_init
-n_AcH = int(10000*kk)
+n_AcH = int(0*kk)
 n_NCA = 0
 n_Ac = 0
 n_NPCremain = 0 #酸化后剩余的NPC
@@ -41,12 +41,12 @@ n_phenol = 0 # 苯酚的数目 = 反应掉的NPC数目
 n_side = 0 # 侧基的数目
 n_HA = n_NPC+ n_AcH; # 酸的总量
 n_activechain = int(1000*kk) #活性链的数目初始和引发剂的数目相同
-kp=10#NPC与HAC的酸性比例
+kp=0.1
 V=(40/(6.023*1e23)*n_Polymer_init)
 k1=2.1
-k4=15000
-k5=0
-k6=0.5
+k4=20000
+k5=0.04
+k6=0
 c1=k1#产生单体
 c4=k4/V/(6.023*1e23)#增长
 c5=k5#终止
@@ -87,10 +87,10 @@ NPC和单体的数目减少，
 import random
 
 def acidification(): #酸化反应，没次反应循环都要发生一次
-    global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6,n_NPCanion
-    n_HA = kp*n_NPC + n_AcH# 酸的总量
-    acidrate= (kp*n_NPC) / n_HA 
-    k = 1.01
+    global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6,n_NPCanion,kp
+    n_HA = n_NPC + kp*n_AcH# 酸的总量
+    acidrate= n_NPC / n_HA 
+    k = 15
     a = k - 1
     b = k*n_HA - k*n_Polymer + 2*n_Polymer
     c = -n_Polymer**2
@@ -136,7 +136,7 @@ def k5_reaction():
     while temp.polymerLength == 0:
         temp=choice(Polymer_list)#随机抽取一条链
     k = np.random.uniform(0,1)
-    if k<=0.909:
+    if k<=1:
         branch=get_all_branch(temp)
         if "temp.n_side" not in branch:
             temp.branch[temp.n_side]=temp#回咬最末端的侧基形成死链
@@ -236,6 +236,15 @@ def sideloc(Polymer):
     # 返回可以挂支链的位置
     loc = list(range(1,Polymer.polymerLength+1))
     for i in range(1,Polymer.polymerLength+1):
+        if i in list(Polymer.branch.keys()):  # 挂有支链
+            loc.remove(i)
+    return loc
+
+def sideloc2(Polymer):
+    global Polymer_list,n_Polymer,n_NPC,n_AcH,n_NCA,n_Ac,n_phenol,n_side,n_HA,n_activechain,n_NPCremain,k1,k4,k5,n_k4,n_k6
+    # 返回可以挂支链的位置
+    loc = list(range(1,Polymer.polymerLength))
+    for i in range(1,Polymer.polymerLength):
         if i in list(Polymer.branch.keys()):  # 挂有支链
             loc.remove(i)
     return loc
